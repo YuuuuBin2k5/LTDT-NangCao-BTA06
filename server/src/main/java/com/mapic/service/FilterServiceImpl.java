@@ -291,10 +291,10 @@ public class FilterServiceImpl implements FilterService {
                 Expression<Integer> commentCount = cb.size(root.get("comments"));
                 Expression<Integer> totalEngagement = cb.sum(likeCount, commentCount);
                 
-                yield cb.greaterThan(totalEngagement, 3); // Lowered threshold for development/early data
+                yield cb.greaterThan(totalEngagement, 0); // Show anything with interaction for now
             }
-            case "most_liked" -> cb.greaterThan(cb.size(root.get("likes")), 5);
-            case "most_discussed" -> cb.greaterThan(cb.size(root.get("comments")), 3);
+            case "most_liked" -> cb.greaterThan(cb.size(root.get("likes")), 0);
+            case "most_discussed" -> cb.greaterThan(cb.size(root.get("comments")), 0);
             default -> null;
         };
     }
@@ -310,7 +310,7 @@ public class FilterServiceImpl implements FilterService {
                 // For now, prioritize popular posts or recent ones
                 Expression<Integer> engagement = cb.sum(cb.size(root.get("likes")), cb.size(root.get("comments")));
                 yield cb.or(
-                    cb.greaterThan(engagement, 2),
+                    cb.greaterThan(engagement, 0),
                     cb.greaterThanOrEqualTo(root.get("createdAt"), LocalDateTime.now().minusDays(3))
                 );
             }
