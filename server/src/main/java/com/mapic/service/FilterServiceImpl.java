@@ -102,6 +102,7 @@ public class FilterServiceImpl implements FilterService {
             case TIME -> buildTimePredicate(root, cb, filter);
             case CONTENT -> buildContentPredicate(root, query, cb, filter);
             case ENGAGEMENT -> buildEngagementPredicate(root, cb, filter);
+            case RECOMMENDATION -> buildRecommendationPredicate(root, cb, filter, userId);
             default -> null;
         };
     }
@@ -146,9 +147,35 @@ public class FilterServiceImpl implements FilterService {
                 yield root.get("user").get("id").in(friendQuery);
             }
             case "friends_of_friends" -> {
-                // This is complex - skip for now or implement differently
-                log.warn("friends_of_friends filter not yet implemented");
-                yield null;
+                // Subquery to get friend IDs of friends
+                Subquery<UUID> fofQuery = query.subquery(UUID.class);
+                Root<Friendship> friendship1 = fofQuery.from(Friendship.class);
+                
+                // First: get current user's friends
+                Subquery<UUID> myFriends = query.subquery(UUID.class);
+                Root<Friendship> f1 = myFriends.from(Friendship.class);
+                myFriends.select(
+                    cb.<UUID>selectCase()
+                        .when(cb.equal(f1.get("userId"), userId), f1.get("friendId"))
+                        .otherwise(f1.get("userId"))
+                ).where(cb.and(
+                    cb.or(cb.equal(f1.get("userId"), userId), cb.equal(f1.get("friendId"), userId)),
+                    cb.equal(f1.get("status"), FriendshipStatus.ACCEPTED)
+                ));
+
+                // Second: get friends of those friends
+                fofQuery.select(
+                    cb.<UUID>selectCase()
+                        .when(friendship1.get("userId").in(myFriends), friendship1.get("friendId"))
+                        .otherwise(friendship1.get("userId"))
+                ).where(cb.and(
+                    cb.or(friendship1.get("userId").in(myFriends), friendship1.get("friendId").in(myFriends)),
+                    cb.equal(friendship1.get("status"), FriendshipStatus.ACCEPTED),
+                    cb.notEqual(friendship1.get("userId"), userId), // Not me
+                    cb.notEqual(friendship1.get("friendId"), userId) // Not me
+                ));
+                
+                yield root.get("user").get("id").in(fofQuery);
             }
             default -> null;
         };
@@ -200,19 +227,20 @@ public class FilterServiceImpl implements FilterService {
         FilterConfigDTO filter
     ) {
         LocalDateTime now = LocalDateTime.now();
+        LocalDateTime todayStart = now.toLocalDate().atStartOfDay();
         
         return switch (filter.getValue().toLowerCase()) {
             case "today" -> cb.greaterThanOrEqualTo(
                 root.get("createdAt"), 
-                now.minusDays(1)
+                todayStart
             );
             case "this_week" -> cb.greaterThanOrEqualTo(
                 root.get("createdAt"), 
-                now.minusWeeks(1)
+                now.minusDays(7)
             );
             case "this_month" -> cb.greaterThanOrEqualTo(
                 root.get("createdAt"), 
-                now.minusMonths(1)
+                now.minusDays(30)
             );
             case "custom" -> {
                 if (filter.getParams().containsKey("startDate") && filter.getParams().containsKey("endDate")) {
@@ -258,15 +286,38 @@ public class FilterServiceImpl implements FilterService {
     ) {
         return switch (filter.getValue().toLowerCase()) {
             case "trending", "popular" -> {
-                // Posts with high engagement (likes + comments)
+                // Posts with high engagement relative to typical data
                 Expression<Integer> likeCount = cb.size(root.get("likes"));
                 Expression<Integer> commentCount = cb.size(root.get("comments"));
                 Expression<Integer> totalEngagement = cb.sum(likeCount, commentCount);
                 
-                yield cb.greaterThan(totalEngagement, 5);
+                yield cb.greaterThan(totalEngagement, 3); // Lowered threshold for development/early data
             }
-            case "most_liked" -> cb.greaterThan(cb.size(root.get("likes")), 10);
-            case "most_discussed" -> cb.greaterThan(cb.size(root.get("comments")), 5);
+            case "most_liked" -> cb.greaterThan(cb.size(root.get("likes")), 5);
+            case "most_discussed" -> cb.greaterThan(cb.size(root.get("comments")), 3);
+            default -> null;
+        };
+    }
+
+    private Predicate buildRecommendationPredicate(
+        Root<Post> root,
+        CriteriaBuilder cb,
+        FilterConfigDTO filter,
+        UUID userId
+    ) {
+        return switch (filter.getValue().toLowerCase()) {
+            case "for_you" -> {
+                // For now, prioritize popular posts or recent ones
+                Expression<Integer> engagement = cb.sum(cb.size(root.get("likes")), cb.size(root.get("comments")));
+                yield cb.or(
+                    cb.greaterThan(engagement, 2),
+                    cb.greaterThanOrEqualTo(root.get("createdAt"), LocalDateTime.now().minusDays(3))
+                );
+            }
+            case "discovery" -> {
+                // Discover new content outside friends if possible, but keep it high engagement
+                yield cb.equal(root.get("privacy"), "PUBLIC");
+            }
             default -> null;
         };
     }

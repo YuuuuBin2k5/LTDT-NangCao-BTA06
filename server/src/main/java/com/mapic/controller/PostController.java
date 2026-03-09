@@ -130,6 +130,7 @@ public class PostController {
         @RequestParam(required = false) String contentFilter,
         @RequestParam(required = false) String timeFilter,
         @RequestParam(required = false) String engagementFilter,
+        @RequestParam(required = false) String recommendationFilter,
         @RequestParam(required = false) Double radius,
         @RequestParam(required = false) Double latitude,
         @RequestParam(required = false) Double longitude,
@@ -181,6 +182,14 @@ public class PostController {
                 .type(com.mapic.dto.feed.FilterType.TIME)
                 .value(timeFilter)
                 .label(getTimeFilterLabel(timeFilter))
+                .build());
+        }
+        
+        if (recommendationFilter != null) {
+            filters.add(com.mapic.dto.feed.FilterConfigDTO.builder()
+                .type(com.mapic.dto.feed.FilterType.RECOMMENDATION)
+                .value(recommendationFilter)
+                .label(getRecommendationFilterLabel(recommendationFilter))
                 .build());
         }
         
@@ -299,6 +308,14 @@ public class PostController {
         return ResponseEntity.ok(count);
     }
     
+    private String getRecommendationFilterLabel(String value) {
+        return switch (value.toLowerCase()) {
+            case "for_you" -> "Dành cho bạn";
+            case "discovery" -> "Khám phá";
+            default -> value;
+        };
+    }
+
     /**
      * Test endpoint to verify authentication
      * GET /api/posts/test-auth

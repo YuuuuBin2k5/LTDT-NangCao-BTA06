@@ -119,6 +119,9 @@ class PostService {
         case 'ENGAGEMENT':
           queryParams.engagementFilter = filter.value;
           break;
+        case 'RECOMMENDATION':
+          queryParams.recommendationFilter = filter.value;
+          break;
       }
     });
 

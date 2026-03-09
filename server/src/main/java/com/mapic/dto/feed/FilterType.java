@@ -6,7 +6,8 @@ public enum FilterType {
     CONTENT("Nội dung"),
     TIME("Thời gian"),
     ENGAGEMENT("Tương tác"),
-    DISCOVERY("Khám phá");
+    DISCOVERY("Khám phá"),
+    RECOMMENDATION("Gợi ý");
 
     private final String label;
 
