@@ -36,7 +36,7 @@ public class FilterServiceImpl implements FilterService {
             // Privacy filter based on user context
             if (userId != null) {
                 // User is logged in: show PUBLIC + own posts + FRIENDS_ONLY from friends
-                Predicate publicPosts = cb.equal(root.get("privacy"), "PUBLIC");
+                Predicate publicPosts = cb.equal(root.get("privacy"), com.mapic.entity.PostPrivacy.PUBLIC);
                 Predicate ownPosts = cb.equal(root.get("user").get("id"), userId);
                 
                 // FRIENDS_ONLY posts from friends
@@ -62,14 +62,14 @@ public class FilterServiceImpl implements FilterService {
                 ).where(cb.or(userIsFriend1, userIsFriend2));
                 
                 Predicate friendsPosts = cb.and(
-                    cb.equal(root.get("privacy"), "FRIENDS_ONLY"),
+                    cb.equal(root.get("privacy"), com.mapic.entity.PostPrivacy.FRIENDS_ONLY),
                     root.get("user").get("id").in(friendQuery)
                 );
                 
                 predicates.add(cb.or(publicPosts, ownPosts, friendsPosts));
             } else {
                 // User not logged in: only PUBLIC posts
-                predicates.add(cb.equal(root.get("privacy"), "PUBLIC"));
+                predicates.add(cb.equal(root.get("privacy"), com.mapic.entity.PostPrivacy.PUBLIC));
             }
             
             for (FilterConfigDTO filter : filters) {
@@ -289,9 +289,12 @@ public class FilterServiceImpl implements FilterService {
                 // Posts with high engagement relative to typical data
                 Expression<Integer> likeCount = cb.size(root.get("likes"));
                 Expression<Integer> commentCount = cb.size(root.get("comments"));
-                Expression<Integer> totalEngagement = cb.sum(likeCount, commentCount);
+                Expression<Integer> viewCount = root.get("viewCount");
                 
-                yield cb.greaterThan(totalEngagement, 0); // Show anything with interaction for now
+                // engagement score = likes + comments + (views / 10)
+                Expression<Integer> totalEngagement = cb.sum(cb.sum(likeCount, commentCount), cb.quot(viewCount, 10));
+                
+                yield cb.greaterThan(totalEngagement, 0); // Show anything with interaction or views for now
             }
             case "most_liked" -> cb.greaterThan(cb.size(root.get("likes")), 0);
             case "most_discussed" -> cb.greaterThan(cb.size(root.get("comments")), 0);
@@ -308,7 +311,11 @@ public class FilterServiceImpl implements FilterService {
         return switch (filter.getValue().toLowerCase()) {
             case "for_you" -> {
                 // For now, prioritize popular posts or recent ones
-                Expression<Integer> engagement = cb.sum(cb.size(root.get("likes")), cb.size(root.get("comments")));
+                Expression<Integer> likeCount = cb.size(root.get("likes"));
+                Expression<Integer> commentCount = cb.size(root.get("comments"));
+                Expression<Integer> viewCount = root.get("viewCount");
+                Expression<Integer> engagement = cb.sum(cb.sum(likeCount, commentCount), cb.quot(viewCount, 10));
+                
                 yield cb.or(
                     cb.greaterThan(engagement, 0),
                     cb.greaterThanOrEqualTo(root.get("createdAt"), LocalDateTime.now().minusDays(3))
@@ -316,7 +323,7 @@ public class FilterServiceImpl implements FilterService {
             }
             case "discovery" -> {
                 // Discover new content outside friends if possible, but keep it high engagement
-                yield cb.equal(root.get("privacy"), "PUBLIC");
+                yield cb.equal(root.get("privacy"), com.mapic.entity.PostPrivacy.PUBLIC);
             }
             default -> null;
         };

@@ -38,7 +38,17 @@ export const TrendingPostsMasonry: React.FC = () => {
     );
   }
 
-  if (posts.length === 0) return null;
+  if (posts.length === 0) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyIcon}>📈</Text>
+        <Text style={styles.emptyText}>Chưa có bài viết xu hướng mới</Text>
+        <Text style={styles.emptySubtext}>
+          Hãy tương tác nhiều hơn với các bài viết để tạo nên xu hướng!
+        </Text>
+      </View>
+    );
+  }
 
   // Split posts into two columns for masonry effect
   const leftColumn = posts.filter((_, index) => index % 2 === 0);
@@ -110,5 +120,31 @@ const styles = StyleSheet.create({
     height: 150,
     justifyContent: 'center',
     alignItems: 'center',
-  }
+  },
+  emptyContainer: {
+    padding: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginVertical: 16,
+    borderWidth: 1,
+    borderColor: '#eee',
+    borderStyle: 'dashed',
+  },
+  emptyIcon: {
+    fontSize: 40,
+    marginBottom: 12,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+  },
 });
