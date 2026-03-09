@@ -1,0 +1,46 @@
+[
+  {
+    "id": 1,
+    "user": {
+      "id": "09936382-eba2-41c7-b75b-bb90348b04d1",
+      "username": "testuser",
+      "nickName": "Test User",
+      "avatarUrl": "/uploads/f02e7bc5-48be-44ff-ad5f-3c12267011ca.jpeg"
+    },
+    "content": "Beautiful morning at Nguyen Hue Walking Street! ≡ƒîà #saigon #morning",
+    "latitude": 10.7743,
+    "longitude": 106.7011,
+    "locationName": "Nguyen Hue Walking Street",
+    "privacy": "PUBLIC",
+    "images": [],
+    "likeCount": 0,
+    "commentCount": 0,
+    "isLiked": false,
+    "viewCount": 2,
+    "hashtags": [],
+    "createdAt": "2026-03-07T23:19:22.372243",
+    "updatedAt": "2026-03-09T22:22:03.790775"
+  },
+  {
+    "id": 5,
+    "user": {
+      "id": "a14b1447-3125-4271-977c-7e5b9fbc2bd4",
+      "username": "minh",
+      "nickName": "Minh Nguyen",
+      "avatarUrl": "https://api.dicebear.com/7.x/avataaars/svg?seed=Minh"
+    },
+    "content": "Working from Starbucks Reserve today ≡ƒÆ╗ #remotework",
+    "latitude": 10.7797,
+    "longitude": 106.6991,
+    "locationName": "Starbucks Reserve",
+    "privacy": "PUBLIC",
+    "images": [],
+    "likeCount": 0,
+    "commentCount": 0,
+    "isLiked": false,
+    "viewCount": 2,
+    "hashtags": [],
+    "createdAt": "2026-03-07T22:19:22.372243",
+    "updatedAt": "2026-03-08T18:20:45.663667"
+  }
+]
