@@ -1,2 +1,0 @@
-Error: Could not find or load main class com.mapic.TestMission
-Caused by: java.lang.ClassNotFoundException: com.mapic.TestMission

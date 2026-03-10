@@ -107,7 +107,13 @@ public class MissionService {
         if (item.getStatus() == MissionStatus.COMPLETED) {
             throw new RuntimeException("Không thể xóa mission đã hoàn thành");
         }
+        
+        MissionCart cart = item.getCart();
+        cart.getItems().remove(item);
         cartItemRepository.delete(item);
+
+        checkAndCloseCartIfNeeded(cart);
+        
         log.info("User {} removed item {} from cart", userId, itemId);
     }
 
@@ -118,22 +124,29 @@ public class MissionService {
         MissionCart cart = cartRepository.findActiveCartByUserId(userId)
             .orElseThrow(() -> new RuntimeException("Không tìm thấy giỏ hàng"));
 
-        if (cart.getStatus() != MissionCartStatus.PENDING) {
-            log.info("User {} already started the journey. Returning active cart.", userId);
-            return MissionCartDTO.from(cart);
-        }
         if (cart.getItems().isEmpty()) {
             throw new RuntimeException("Giỏ hàng trống, hãy thêm mission trước");
         }
 
-        cart.setStatus(MissionCartStatus.ACTIVE);
-        cart.setStartedAt(LocalDateTime.now());
+        boolean hasNewlyActivated = false;
 
-        // Chuyển tất cả items sang ACTIVE
-        cart.getItems().forEach(item -> {
-            item.setStatus(MissionStatus.ACTIVE);
-            item.setStartedAt(LocalDateTime.now());
-        });
+        // Chuyển tất cả items đang AVAILABLE sang ACTIVE
+        for (MissionCartItem item : cart.getItems()) {
+            if (item.getStatus() == MissionStatus.AVAILABLE) {
+                item.setStatus(MissionStatus.ACTIVE);
+                item.setStartedAt(LocalDateTime.now());
+                hasNewlyActivated = true;
+            }
+        }
+
+        if (cart.getStatus() != MissionCartStatus.ACTIVE) {
+            cart.setStatus(MissionCartStatus.ACTIVE);
+            cart.setStartedAt(LocalDateTime.now());
+        }
+
+        if (cart.getStatus() == MissionCartStatus.ACTIVE && !hasNewlyActivated) {
+            log.info("User {} already started all items in the journey.", userId);
+        }
 
         cartRepository.save(cart);
         log.info("User {} started journey with cart {}", userId, cart.getId());
@@ -144,9 +157,13 @@ public class MissionService {
 
     @Transactional(readOnly = true)
     public MissionCartDTO getTracker(UUID userId) {
-        MissionCart cart = cartRepository.findActiveCartByUserId(userId)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy hành trình đang active"));
-        return MissionCartDTO.from(cart);
+        return cartRepository.findActiveCartByUserId(userId)
+            .map(MissionCartDTO::from)
+            .orElseGet(() -> MissionCartDTO.builder()
+                .items(java.util.Collections.emptyList())
+                .status(MissionCartStatus.PENDING)
+                .totalXpPossible(0)
+                .build());
     }
 
     @Transactional(readOnly = true)
@@ -170,6 +187,9 @@ public class MissionService {
             item.setStartedAt(LocalDateTime.now());
         }
         cartItemRepository.save(item);
+
+        checkAndCloseCartIfNeeded(item.getCart());
+
         return MissionCartItemDTO.from(item);
     }
 
@@ -203,6 +223,9 @@ public class MissionService {
         addXpToUser(userId, mission.getXpReward());
 
         log.info("User {} completed mission {} (+{} XP)", userId, mission.getId(), mission.getXpReward());
+        
+        checkAndCloseCartIfNeeded(item.getCart());
+
         return MissionCartItemDTO.from(item);
     }
 
@@ -232,6 +255,8 @@ public class MissionService {
             item.setCancelledAt(LocalDateTime.now());
         }
         cartItemRepository.save(item);
+
+        checkAndCloseCartIfNeeded(item.getCart());
     }
 
     // ─────────────── XP ───────────────────────────────────────
@@ -291,5 +316,27 @@ public class MissionService {
             + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
             * Math.sin(dLon / 2) * Math.sin(dLon / 2);
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    /**
+     * Kiểm tra xem tất cả các Items trong Cart có ở trạng thái terminal (hoạt động đến điểm cuối cùng) chưa.
+     * Nếu có, đánh dấu Cart là COMPLETED để user có thể tạo hành trình mới.
+     */
+    private void checkAndCloseCartIfNeeded(MissionCart cart) {
+        if (cart.getStatus() == MissionCartStatus.COMPLETED) {
+            return;
+        }
+
+        boolean allTerminal = cart.getItems().stream().allMatch(item ->
+            item.getStatus() == MissionStatus.COMPLETED
+            || item.getStatus() == MissionStatus.CANCELLED
+            || item.getStatus() == MissionStatus.CANCEL_REQUESTED
+        );
+
+        if (allTerminal && !cart.getItems().isEmpty()) {
+            cart.setStatus(MissionCartStatus.COMPLETED);
+            cartRepository.save(cart);
+            log.info("Cart {} has been marked as COMPLETED because all items are terminal", cart.getId());
+        }
     }
 }

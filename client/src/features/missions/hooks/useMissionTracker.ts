@@ -2,14 +2,22 @@
  * TanStack Query hook cho Mission Tracker — polling 30 giây
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { missionService } from '../services/mission.service';
 import type { CheckInRequest, MissionStatus } from '../types/mission.types';
+import { useMissionCartStore } from '../store/missionCartStore';
 
 export const TRACKER_QUERY_KEY = 'mission-tracker';
 export const HISTORY_QUERY_KEY = 'mission-history';
 
 export function useMissionTracker() {
   const queryClient = useQueryClient();
+  const lastUpdated = useMissionCartStore((state) => state.lastUpdated);
+
+  // Auto-invalidate tracker when cart store updates
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: [TRACKER_QUERY_KEY] });
+  }, [lastUpdated, queryClient]);
 
   // Tracker với polling 30s
   const trackerQuery = useQuery({
