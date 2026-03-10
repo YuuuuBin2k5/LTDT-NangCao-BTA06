@@ -292,9 +292,11 @@ public class FilterServiceImpl implements FilterService {
                 Expression<Integer> viewCount = root.get("viewCount");
                 
                 // engagement score = likes + comments + (views / 10)
-                Expression<Integer> totalEngagement = cb.sum(cb.sum(likeCount, commentCount), cb.quot(viewCount, 10));
+                Expression<Number> totalLikesAndComments = cb.sum(likeCount.as(Number.class), commentCount.as(Number.class));
+                Expression<Number> viewsContribution = cb.quot(viewCount.as(Number.class), 10);
+                Expression<Number> totalEngagement = cb.sum(totalLikesAndComments, viewsContribution);
                 
-                yield cb.greaterThan(totalEngagement, 0); // Show anything with interaction or views for now
+                yield cb.greaterThan(totalEngagement.as(Integer.class), 0); // Show anything with interaction or views for now
             }
             case "most_liked" -> cb.greaterThan(cb.size(root.get("likes")), 0);
             case "most_discussed" -> cb.greaterThan(cb.size(root.get("comments")), 0);
@@ -314,10 +316,12 @@ public class FilterServiceImpl implements FilterService {
                 Expression<Integer> likeCount = cb.size(root.get("likes"));
                 Expression<Integer> commentCount = cb.size(root.get("comments"));
                 Expression<Integer> viewCount = root.get("viewCount");
-                Expression<Integer> engagement = cb.sum(cb.sum(likeCount, commentCount), cb.quot(viewCount, 10));
+                Expression<Number> totalLikesAndComments = cb.sum(likeCount.as(Number.class), commentCount.as(Number.class));
+                Expression<Number> viewsContribution = cb.quot(viewCount.as(Number.class), 10);
+                Expression<Number> totalEngagement = cb.sum(totalLikesAndComments, viewsContribution);
                 
                 yield cb.or(
-                    cb.greaterThan(engagement, 0),
+                    cb.greaterThan(totalEngagement.as(Integer.class), 0),
                     cb.greaterThanOrEqualTo(root.get("createdAt"), LocalDateTime.now().minusDays(3))
                 );
             }

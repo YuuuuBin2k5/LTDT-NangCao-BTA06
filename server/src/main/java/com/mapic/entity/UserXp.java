@@ -27,6 +27,10 @@ public class UserXp {
     @Builder.Default
     private Integer missionsCompleted = 0;
 
+    @Column(name = "spendable_xp", nullable = false)
+    @Builder.Default
+    private Integer spendableXp = 0;
+
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
@@ -39,6 +43,10 @@ public class UserXp {
 
     public void addXp(int xp) {
         this.totalXp += xp;
+        if (this.spendableXp == null) {
+            this.spendableXp = 0;
+        }
+        this.spendableXp += xp;
         this.missionsCompleted++;
         this.updatedAt = LocalDateTime.now();
         recalculateLevel();

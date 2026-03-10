@@ -1,6 +1,4 @@
-/**
- * User-related type definitions
- */
+import { AvatarFrame } from './avatar-frame.types';
 
 export interface User {
   id: string;
@@ -10,6 +8,7 @@ export interface User {
   avatarUrl?: string;
   bio?: string;
   phone?: string;
+  selectedFrame?: AvatarFrame;
 }
 
 export interface LoginCredentials {

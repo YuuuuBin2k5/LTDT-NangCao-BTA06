@@ -7,10 +7,13 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Modal,
+  Alert,
 } from 'react-native';
 import { AvatarFrame } from '../../../shared/types/avatar-frame.types';
 import { avatarFrameService } from '../../../services/avatar/avatar-frame.service';
+import { missionService } from '../../missions/services/mission.service';
 import { useToast } from '../../../shared/contexts/ToastContext';
+import { AvatarWithFrame } from '../../../shared/components/AvatarWithFrame';
 
 interface AvatarFrameSelectorProps {
   visible: boolean;
@@ -26,6 +29,7 @@ export const AvatarFrameSelector: React.FC<AvatarFrameSelectorProps> = ({
   const [frames, setFrames] = useState<AvatarFrame[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFrameId, setSelectedFrameId] = useState<string | null>(null);
+  const [spendableXp, setSpendableXp] = useState<number>(0);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -37,9 +41,13 @@ export const AvatarFrameSelector: React.FC<AvatarFrameSelectorProps> = ({
   const loadFrames = async () => {
     try {
       setIsLoading(true);
-      const allFrames = await avatarFrameService.getAllFrames();
+      const [allFrames, userXp] = await Promise.all([
+        avatarFrameService.getAllFrames(),
+        missionService.getMyXp().catch(() => ({ spendableXp: 0 }))
+      ]);
       setFrames(allFrames);
-      
+      setSpendableXp((userXp as any).spendableXp || 0);
+
       // Find currently selected frame
       const selected = allFrames.find((f) => f.isSelected);
       if (selected) {
@@ -55,7 +63,35 @@ export const AvatarFrameSelector: React.FC<AvatarFrameSelectorProps> = ({
 
   const handleFramePress = async (frame: AvatarFrame) => {
     if (!frame.isUnlocked) {
-      showToast('Khung ảnh này chưa được mở khóa', 'info');
+      if (!frame.unlockRequirementValue) {
+        showToast('Khung ảnh này không thể mở khóa bằng EXP', 'info');
+        return;
+      }
+      
+      if (spendableXp < frame.unlockRequirementValue) {
+        showToast(`Bạn cần ${frame.unlockRequirementValue} EXP để mở khóa`, 'info');
+        return;
+      }
+
+      Alert.alert(
+        'Mở khóa khung ảnh',
+        `Bạn có chắc muốn dùng ${frame.unlockRequirementValue} EXP để đổi lấy khung "${frame.name}" này?`,
+        [
+          { text: 'Hủy', style: 'cancel' },
+          { 
+            text: 'Đồng ý',
+            onPress: async () => {
+              try {
+                await avatarFrameService.unlockFrame(frame.id);
+                showToast(`Đã mở khóa khung "${frame.name}"`, 'success');
+                await loadFrames(); // Reload frames and EXP
+              } catch (err: any) {
+                showToast(err.message || 'Không thể mở khóa', 'error');
+              }
+            }
+          }
+        ]
+      );
       return;
     }
 
@@ -92,15 +128,12 @@ export const AvatarFrameSelector: React.FC<AvatarFrameSelectorProps> = ({
         activeOpacity={0.7}
       >
         <View style={styles.framePreview}>
-          {/* Frame preview would render SVG here */}
-          <View
-            style={[
-              styles.framePlaceholder,
-              { borderColor: isLocked ? '#ccc' : '#2196F3' },
-            ]}
-          >
-            <Text style={styles.frameIcon}>🖼️</Text>
-          </View>
+          <AvatarWithFrame
+            uri="https://api.dicebear.com/7.x/avataaars/svg?seed=Preview"
+            frame={item}
+            size={70}
+            showPadding={true}
+          />
           
           {isLocked && (
             <View style={styles.lockOverlay}>
@@ -148,7 +181,10 @@ export const AvatarFrameSelector: React.FC<AvatarFrameSelectorProps> = ({
         <View style={styles.modalContent}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Chọn khung ảnh</Text>
+            <View>
+              <Text style={styles.title}>Chọn khung ảnh</Text>
+              <Text style={styles.xpText}>Kinh nghiệm của bạn: <Text style={styles.xpAmount}>{spendableXp} EXP</Text></Text>
+            </View>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Text style={styles.closeIcon}>✕</Text>
             </TouchableOpacity>
@@ -201,6 +237,15 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
+  },
+  xpText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  xpAmount: {
+    fontWeight: 'bold',
+    color: '#2196F3',
   },
   closeButton: {
     width: 32,

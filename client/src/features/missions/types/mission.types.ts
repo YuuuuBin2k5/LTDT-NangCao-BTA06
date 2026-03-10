@@ -60,6 +60,7 @@ export interface MissionCart {
 
 export interface UserXp {
   totalXp: number;
+  spendableXp: number;
   level: number;
   missionsCompleted: number;
   xpToNextLevel: number;

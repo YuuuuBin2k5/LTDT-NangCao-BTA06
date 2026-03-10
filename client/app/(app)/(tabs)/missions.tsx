@@ -30,7 +30,12 @@ export default function MissionsScreen() {
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, refetch } =
     useMissions({ categoryId: selectedCategoryId });
 
-  const missions = (data?.pages.flatMap(p => p.content) ?? []).filter(Boolean) as Mission[];
+  const rawMissions = (data?.pages.flatMap(p => p.content) ?? []).filter(Boolean) as Mission[];
+  // Deduplicate array by ID
+  const mapUnique = new Map();
+  rawMissions.forEach(m => mapUnique.set(m.id, m));
+  const missions = Array.from(mapUnique.values());
+
   const cartItemIds = cart?.items
     .filter(i => !['CANCELLED', 'CANCEL_REQUESTED'].includes(i.status))
     .map(i => i.mission.id) ?? [];

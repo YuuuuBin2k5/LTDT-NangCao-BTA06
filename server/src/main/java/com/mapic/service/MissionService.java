@@ -119,7 +119,8 @@ public class MissionService {
             .orElseThrow(() -> new RuntimeException("Không tìm thấy giỏ hàng"));
 
         if (cart.getStatus() != MissionCartStatus.PENDING) {
-            throw new RuntimeException("Hành trình đã được bắt đầu");
+            log.info("User {} already started the journey. Returning active cart.", userId);
+            return MissionCartDTO.from(cart);
         }
         if (cart.getItems().isEmpty()) {
             throw new RuntimeException("Giỏ hàng trống, hãy thêm mission trước");
@@ -242,6 +243,7 @@ public class MissionService {
         int xpToNext = 200 - (xp.getTotalXp() % 200);
         return UserXpDTO.builder()
             .totalXp(xp.getTotalXp())
+            .spendableXp(xp.getSpendableXp())
             .level(xp.getLevel())
             .missionsCompleted(xp.getMissionsCompleted())
             .xpToNextLevel(xpToNext)

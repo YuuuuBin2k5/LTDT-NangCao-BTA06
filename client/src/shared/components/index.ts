@@ -19,3 +19,6 @@ export type { ErrorMessageProps } from './ErrorMessage';
 
 export { SuccessMessage } from './SuccessMessage';
 export type { SuccessMessageProps } from './SuccessMessage';
+
+export { OptimizedImage } from './OptimizedImage';
+export { AvatarWithFrame } from './AvatarWithFrame';

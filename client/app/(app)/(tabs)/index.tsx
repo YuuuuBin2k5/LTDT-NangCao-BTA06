@@ -66,15 +66,20 @@ export default function MapScreen() {
   const { data: missionsData } = useMissions({});
   const allMissions = missionsData?.pages.flatMap(p => p.content) ?? [];
   const { tracker } = useMissionTracker();
-  const activeMissions = tracker?.items.filter(i => 
+  const activeMissions = tracker?.items?.filter(i => 
     ['ACTIVE', 'IN_PROGRESS', 'AT_LOCATION'].includes(i.status)
   ) ?? [];
 
   // Logic: Nếu có nhiệm vụ đang thực hiện, chỉ hiện các nhiệm vụ đó trên map. 
   // Nếu không, hiện tất cả nhiệm vụ lân cận.
-  const displayedMissions = activeMissions.length > 0 
+  let displayedMissions = activeMissions.length > 0 
     ? activeMissions.map(item => item.mission)
     : allMissions;
+    
+  // Deduplicate missions by ID to prevent key collision warnings
+  displayedMissions = (displayedMissions || []).filter(
+    (mission, index, self) => index === self.findIndex((m) => m.id === mission.id)
+  );
 
   const { activeEffects, removeEffect } = useInteractionEffects();
   const { privacyMode, loadPrivacySettings } = useLocationPrivacy();

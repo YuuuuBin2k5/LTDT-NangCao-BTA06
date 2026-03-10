@@ -15,6 +15,8 @@ import com.mapic.entity.UserAvatarFrame;
 import com.mapic.repository.AvatarFrameRepository;
 import com.mapic.repository.UserAvatarFrameRepository;
 import com.mapic.repository.UserRepository;
+import com.mapic.repository.UserXpRepository;
+import com.mapic.entity.UserXp;
 
 import lombok.RequiredArgsConstructor;
 
@@ -25,15 +27,17 @@ public class AvatarFrameService {
     private final AvatarFrameRepository frameRepository;
     private final UserAvatarFrameRepository userFrameRepository;
     private final UserRepository userRepository;
-    
+    private final UserXpRepository userXpRepository;
+
     @Transactional(readOnly = true)
     public List<AvatarFrameDTO> getAllFrames(UUID userId) {
+        String userIdStr = userId.toString();
         List<AvatarFrame> allFrames = frameRepository.findAllOrderedByDisplayOrder();
-        Set<String> unlockedFrameIds = userFrameRepository.findByUserId(userId).stream()
+        Set<String> unlockedFrameIds = userFrameRepository.findFramesByUserId(userIdStr).stream()
             .map(uaf -> uaf.getFrame().getId())
             .collect(Collectors.toSet());
         
-        String selectedFrameId = userFrameRepository.findSelectedByUserId(userId)
+        String selectedFrameId = userFrameRepository.findSelectedFrameByUserId(userIdStr)
             .map(uaf -> uaf.getFrame().getId())
             .orElse(null);
         
@@ -45,61 +49,62 @@ public class AvatarFrameService {
     
     @Transactional(readOnly = true)
     public List<String> getUnlockedFrames(UUID userId) {
-        return userFrameRepository.findByUserId(userId).stream()
+        return userFrameRepository.findFramesByUserId(userId.toString()).stream()
             .map(uaf -> uaf.getFrame().getId())
             .collect(Collectors.toList());
     }
     
+    @Transactional(readOnly = true)
+    public AvatarFrameDTO getSelectedFrame(UUID userId) {
+        return userFrameRepository.findSelectedFrameByUserId(userId.toString())
+            .map(uaf -> mapToDTO(uaf.getFrame(), true, true))
+            .orElse(null);
+    }
+    
     @Transactional
     public void selectFrame(UUID userId, String frameId) {
+        String userIdStr = userId.toString();
         // Check if user has unlocked this frame
-        if (!userFrameRepository.existsByUserIdAndFrameId(userId, frameId)) {
+        if (!userFrameRepository.checkFrameUnlocked(userIdStr, frameId)) {
             throw new RuntimeException("Frame not unlocked");
         }
         
         // Deselect all frames for user
-        userFrameRepository.deselectAllForUser(userId);
+        userFrameRepository.deselectAllFramesForUser(userIdStr);
         
         // Select the new frame
-        UserAvatarFrame.UserAvatarFrameId id = new UserAvatarFrame.UserAvatarFrameId();
-        id.setUserId(userId);
-        id.setFrameId(frameId);
-        
-        UserAvatarFrame userFrame = userFrameRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Frame not found"));
-        
-        userFrame.setIsSelected(true);
-        userFrameRepository.save(userFrame);
+        userFrameRepository.selectFrameCustom(userIdStr, frameId);
     }
     
     @Transactional
     public void unlockFrame(UUID userId, String frameId) {
+        String userIdStr = userId.toString();
         // Check if frame exists
         AvatarFrame frame = frameRepository.findById(frameId)
             .orElseThrow(() -> new RuntimeException("Frame not found"));
         
         // Check if already unlocked
-        if (userFrameRepository.existsByUserIdAndFrameId(userId, frameId)) {
-            throw new RuntimeException("Frame already unlocked");
+        if (userFrameRepository.checkFrameUnlocked(userIdStr, frameId)) {
+            throw new RuntimeException("Khung này đã được mở khóa");
         }
         
-        // Get user
-        User user = userRepository.findById(userId)
-            .orElseThrow(() -> new RuntimeException("User not found"));
+        // Check EXP requirement
+        if (frame.getUnlockRequirementValue() != null && frame.getUnlockRequirementValue() > 0) {
+            UserXp userXp = userXpRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin kinh nghiệm"));
+            
+            int spendable = userXp.getSpendableXp() != null ? userXp.getSpendableXp() : 0;
+            if (spendable < frame.getUnlockRequirementValue()) {
+                throw new RuntimeException("Bạn không đủ EXP để đổi khung này (Cần " + frame.getUnlockRequirementValue() + " EXP)");
+            }
+            
+            // Deduct EXP
+            userXp.setSpendableXp(spendable - frame.getUnlockRequirementValue());
+            userXpRepository.save(userXp);
+        }
         
-        // Create unlock entry
-        UserAvatarFrame.UserAvatarFrameId id = new UserAvatarFrame.UserAvatarFrameId();
-        id.setUserId(userId);
-        id.setFrameId(frameId);
-        
-        UserAvatarFrame userFrame = UserAvatarFrame.builder()
-            .id(id)
-            .user(user)
-            .frame(frame)
-            .isSelected(false)
-            .build();
-        
-        userFrameRepository.save(userFrame);
+        // Unlock the frame using native query
+        userFrameRepository.unlockFrameCustom(userIdStr, frameId);
     }
     
     private AvatarFrameDTO mapToDTO(AvatarFrame frame, boolean isUnlocked, boolean isSelected) {

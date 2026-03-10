@@ -17,7 +17,7 @@ public class FriendLocationDTO {
     private String name;
     private String username;
     private String avatarUrl;
-    private String frameId;
+    private com.mapic.dto.avatar.AvatarFrameDTO selectedFrame;
     private Double latitude;
     private Double longitude;
     private LocalDateTime timestamp;

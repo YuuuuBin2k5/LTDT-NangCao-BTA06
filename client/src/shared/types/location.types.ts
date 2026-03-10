@@ -1,3 +1,5 @@
+import { AvatarFrame } from './avatar-frame.types';
+
 /**
  * Location-related type definitions
  */
@@ -38,7 +40,7 @@ export interface FriendLocation {
   timestamp: Date;
   isOnline: boolean;
   lastSeenMinutes?: number;
-  frameId?: string;
+  selectedFrame?: AvatarFrame;
   statusMessage?: string;
   statusEmoji?: string;
 }

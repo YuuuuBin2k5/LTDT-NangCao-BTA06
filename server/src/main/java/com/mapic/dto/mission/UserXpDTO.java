@@ -7,6 +7,7 @@ import lombok.Data;
 @Builder
 public class UserXpDTO {
     private Integer totalXp;
+    private Integer spendableXp;
     private Integer level;
     private Integer missionsCompleted;
     private Integer xpToNextLevel;  // XP còn cần để lên level tiếp

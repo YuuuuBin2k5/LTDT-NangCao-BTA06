@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
+import React from 'react';
+import { View, StyleSheet } from 'react-native';
 import { Marker } from 'react-native-maps';
 import { FriendLocation } from '../../../shared/types/location.types';
-import { generateAvatarMarker } from '../utils/marker-image-generator';
+import { AvatarWithFrame } from '../../../shared/components/AvatarWithFrame';
 
 interface FriendMarkerProps {
   friend: FriendLocation;
@@ -18,24 +19,6 @@ export const FriendMarker: React.FC<FriendMarkerProps> = ({
     onPress(friend);
   };
 
-  console.log('🗺️ FriendMarker rendering:', {
-    name: friend.name,
-    lat: friend.latitude,
-    lng: friend.longitude,
-    isOnline: friend.isOnline,
-  });
-
-  // Generate marker icon with fixed size (60px) - won't scale with zoom
-  const markerIcon = useMemo(() => {
-    return generateAvatarMarker(
-      friend.avatarUrl,
-      friend.userId,
-      friend.isOnline,
-      friend.name,
-      60 // Fixed size in pixels
-    );
-  }, [friend.avatarUrl, friend.userId, friend.isOnline, friend.name]);
-
   return (
     <Marker
       coordinate={{
@@ -43,12 +26,45 @@ export const FriendMarker: React.FC<FriendMarkerProps> = ({
         longitude: friend.longitude,
       }}
       onPress={handlePress}
-      icon={markerIcon}
       anchor={{ x: 0.5, y: 0.5 }}
       flat={true}
-      tracksViewChanges={false}
+      tracksViewChanges={true} // Needed for custom view markers to render correctly
       title={friend.name}
       description={`${friend.isOnline ? '🟢 Online' : '🔴 Offline'}${friend.statusMessage ? ` - ${friend.statusMessage}` : ''}`}
-    />
+    >
+      <View style={styles.markerContainer}>
+        <AvatarWithFrame
+          uri={friend.avatarUrl}
+          frame={friend.selectedFrame}
+          size={50}
+          showPadding={true}
+        />
+        <View 
+          style={[
+            styles.onlineIndicator, 
+            { backgroundColor: friend.isOnline ? '#4CAF50' : '#FF5722' }
+          ]} 
+        />
+      </View>
+    </Marker>
   );
 };
+
+const styles = StyleSheet.create({
+  markerContainer: {
+    padding: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  onlineIndicator: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#fff',
+    zIndex: 2,
+  },
+});

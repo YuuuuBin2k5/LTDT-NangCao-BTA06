@@ -22,5 +22,6 @@ public class UserDTO {
     private String name;
     private String avatarUrl;
     private UUID friendshipId;
-    private FriendshipStatus friendshipStatus;
+    private com.mapic.entity.FriendshipStatus friendshipStatus;
+    private com.mapic.dto.avatar.AvatarFrameDTO selectedFrame;
 }

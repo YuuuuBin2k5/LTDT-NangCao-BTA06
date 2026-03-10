@@ -9,4 +9,5 @@ import lombok.Data;
 public class UserResponse {
     private String message;
     private User user;
+    private com.mapic.dto.avatar.AvatarFrameDTO selectedFrame;
 }

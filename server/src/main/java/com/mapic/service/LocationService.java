@@ -17,6 +17,7 @@ import com.mapic.entity.User;
 import com.mapic.entity.UserLocation;
 import com.mapic.repository.CurrentLocationRepository;
 import com.mapic.repository.UserLocationRepository;
+import com.mapic.repository.UserAvatarFrameRepository;
 
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class LocationService {
 
     private final CurrentLocationRepository locationRepository;
     private final UserLocationRepository userLocationRepository;
+    private final UserAvatarFrameRepository userAvatarFrameRepository;
     private final EntityManager entityManager;
     
     @Transactional
@@ -124,12 +126,28 @@ public class LocationService {
         long minutesAgo = duration.toMinutes();
         boolean isOnline = minutesAgo < 5;
         
+        // Fetch selected frame
+        com.mapic.dto.avatar.AvatarFrameDTO selectedFrame = userAvatarFrameRepository.findSelectedFrameByUserId(friend.getId().toString())
+            .map(uaf -> {
+                com.mapic.entity.AvatarFrame frame = uaf.getFrame();
+                return com.mapic.dto.avatar.AvatarFrameDTO.builder()
+                    .id(frame.getId())
+                    .name(frame.getName())
+                    .frameType(frame.getFrameType())
+                    .svgPath(frame.getSvgPath())
+                    .isPremium(frame.getIsPremium())
+                    .isSelected(true)
+                    .isUnlocked(true)
+                    .build();
+            })
+            .orElse(null);
+            
         return FriendLocationDTO.builder()
             .userId(friend.getId())  // Changed from friendId to userId
             .name(friend.getNickName())
             .username(friend.getUsername())
             .avatarUrl(friend.getAvatarUrl())
-            .frameId(null) // Will be populated later with avatar frame logic
+            .selectedFrame(selectedFrame)
             .latitude(location.getLatitude())
             .longitude(location.getLongitude())
             .timestamp(location.getTimestamp())

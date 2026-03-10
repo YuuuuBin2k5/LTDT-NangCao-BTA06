@@ -23,7 +23,7 @@ import {
 import { AvatarFrameSelector } from '../../../src/features/friends/components/AvatarFrameSelector';
 import { useProfile } from '../../../src/features/profile/hooks/useProfile';
 import { ContactType } from '../../../src/services/profile/profile.service';
-import { OptimizedImage } from '../../../src/shared/components/OptimizedImage';
+import { OptimizedImage, AvatarWithFrame } from '../../../src/shared/components';
 import * as SecureStore from 'expo-secure-store';
 
 export default function SettingsScreen() {
@@ -267,12 +267,14 @@ export default function SettingsScreen() {
           style={styles.profileCard}
           onPress={handleEditProfile}
         >
-          <OptimizedImage
+          <AvatarWithFrame
             uri={
               profile?.avatarUrl ||
               'https://api.dicebear.com/7.x/avataaars/svg?seed=Default'
             }
-            style={styles.profileAvatar}
+            frame={profile?.selectedFrame}
+            size={64}
+            imageStyle={styles.profileAvatar}
           />
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>{profile?.nickName}</Text>

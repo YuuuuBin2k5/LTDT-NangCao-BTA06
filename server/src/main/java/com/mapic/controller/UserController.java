@@ -12,6 +12,7 @@ import com.mapic.dto.UserSearchResultDTO;
 import com.mapic.dto.VerifyContactChangeRequest;
 import com.mapic.entity.User;
 import com.mapic.service.UserService;
+import com.mapic.service.AvatarFrameService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -23,6 +24,7 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+    private final AvatarFrameService avatarFrameService;
 
     @GetMapping("/profile")
     public ResponseEntity<UserResponse> getProfile(@AuthenticationPrincipal User user) {
@@ -30,6 +32,7 @@ public class UserController {
         
         UserResponse response = UserResponse.builder()
                 .user(user)
+                .selectedFrame(avatarFrameService.getSelectedFrame(user.getId()))
                 .build();
         
         return ResponseEntity.ok(response);
@@ -44,13 +47,13 @@ public class UserController {
         System.out.println("   NickName: " + request.getNickName());
         System.out.println("   Bio: " + request.getBio());
         System.out.println("   AvatarUrl: " + request.getAvatarUrl());
-        
         try {
             User updatedUser = userService.updateProfile(user, request);
             
             UserResponse response = UserResponse.builder()
                     .message("Cập nhật thông tin thành công!")
                     .user(updatedUser)
+                    .selectedFrame(avatarFrameService.getSelectedFrame(updatedUser.getId()))
                     .build();
             
             System.out.println("✅ Profile updated successfully");
